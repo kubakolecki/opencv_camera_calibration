@@ -60,12 +60,12 @@ Run the script with -h argument to get the list of all command line arguments.
 To calibrate camera just copy your chessboard calibratoin images to one directory where you have read/write access.
 Make sure you are in the main repo directory. Run the calibration script (Linux command):
 ```bash
-python3 src/calibrate_camera.py -d path/to/image/dirctory
+python3 src/calibrate_camera.py -i path/to/image/dirctory
 ```
 
 Windows command:
 ```bash
-python src/calibrate_camera.py -d path/to/image/dirctory
+python src/calibrate_camera.py -i path/to/image/dirctory
 ```
 
 The calibration script produces 4 results:
