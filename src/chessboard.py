@@ -33,6 +33,7 @@ def detect_chessboard_corners(image_dir, rows=10, cols=12, corner_size=0.073):
 
 
     for img_path in image_paths:
+        # print(f"Processing image: {img_path}")
         # Read the image
         image = cv2.imread(img_path)
         if image is None:
@@ -49,7 +50,7 @@ def detect_chessboard_corners(image_dir, rows=10, cols=12, corner_size=0.073):
 
             # Refine corner positions
             criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-            corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+            corners = cv2.cornerSubPix(gray, corners, (21, 21), (-1, -1), criteria)
 
             # Draw the corners
             cv2.drawChessboardCorners(image, checkerboard_size, corners, is_successfull)

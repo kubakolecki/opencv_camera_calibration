@@ -26,65 +26,6 @@ def compute_total_rmse(reprojection_residuals_for_all_views):
     total_rmse = np.sqrt(np.mean(all_residuals**2))
     return total_rmse
 
-def write_orbslam3_mono_yaml_config(path_to_yaml_file, camera_matri, image_size, distortion_coeffs):
-    if camera_matri.shape != (3,3):
-        raise ValueError("Camera matrix must be of shape (3,3)")
-    if distortion_coeffs.shape[0] != 1 or distortion_coeffs.shape[1] not in [4,5,8]:
-        raise ValueError("Distortion coefficients must be of shape (1,4), (1,5) or (1,8)")
-    with open(path_to_yaml_file, 'w') as f:
-        f.write("%YAML:1.0\n\n")
-        f.write("# Camera Configuration File\n\n")
-        f.write("File.version: \"1.0\" \n")
-        f.write("\n# Camera Parameters\n\n")
-        f.write(f"Camera.type: \"PinHole\"\n")
-        f.write(f"Camera1.fx: {camera_matri[0,0]:.6f}\n")
-        f.write(f"Camera1.fy: {camera_matri[1,1]:.6f}\n")
-        f.write(f"Camera1.cx: {camera_matri[0,2]:.6f}\n")
-        f.write(f"Camera1.cy: {camera_matri[1,2]:.6f}\n")
-        f.write(f"Camera1.k1: {distortion_coeffs[0,0]:.12f}\n")
-        f.write(f"Camera1.k2: {distortion_coeffs[0,1]:.12f}\n")
-        if distortion_coeffs.shape[1] >= 3:
-            f.write(f"Camera1.p1: {distortion_coeffs[0,2]:.12f}\n")
-        else:
-            f.write(f"Camera.1p1: 0.0\n")
-        if distortion_coeffs.shape[1] >= 4:
-            f.write(f"Camera1.p2: {distortion_coeffs[0,3]:.12f}\n")
-        else:
-            f.write(f"Camera.1p2: 0.0\n")
-        if distortion_coeffs.shape[1] >= 5:
-            f.write(f"Camera1.k3: {distortion_coeffs[0,4]:.12f}\n")
-        else:
-            f.write(f"Camera1.k3: 0.0\n")
-
-        f.write(f"Camera.width: {image_size[0]}\n")
-        f.write(f"Camera.height: {image_size[1]}\n")
-        f.write(f"Camera.newWidth: {image_size[0]}\n")
-        f.write(f"Camera.newHeight: {image_size[1]}\n")
-        f.write("Camera.fps: 10\n")
-        f.write("Camera.RGB: 1\n")
-
-
-        f.write("\n# ORB Parameters\n\n")
-
-        f.write("ORBextractor.nFeatures: 1500\n")
-        f.write("ORBextractor.scaleFactor: 1.2\n")
-        f.write("ORBextractor.nLevels: 8\n")
-        f.write("ORBextractor.iniThFAST: 20\n")
-        f.write("ORBextractor.minThFAST: 7\n")
-
-        f.write("\n# Viewer Parameters\n\n")
-
-        f.write("Viewer.KeyFrameSize: 0.05\n")
-        f.write("Viewer.KeyFrameLineWidth: 1.0\n")
-        f.write("Viewer.GraphLineWidth: 0.9\n")
-        f.write("Viewer.PointSize: 2.0\n")
-        f.write("Viewer.CameraSize: 0.08\n")
-        f.write("Viewer.CameraLineWidth: 3.0\n")
-        f.write("Viewer.ViewpointX: 0.0\n")
-        f.write("Viewer.ViewpointY: -0.7\n")
-        f.write("Viewer.ViewpointZ: -1.8\n")
-        f.write("Viewer.ViewpointF: 500.0\n")
-
 
 if __name__ == "__main__":
 
@@ -101,7 +42,8 @@ if __name__ == "__main__":
     chessboard_columns = args.chessboard_columns if args.chessboard_columns else 12  # Number of inner corners per a chessboard column (adjust according to your chessboard)
     chessboard_square_size = args.square_size if args.square_size else 0.073  # Size of a chessboard square (in meters, adjust according to your chessboard)
     use_rational_model = args.distortion_rational_model if args.distortion_rational_model==True else False  # Whether to use rational model (k4, k5, k6)
-    flags = None
+    flags = 0
+    flags = flags | cv2.CALIB_FIX_ASPECT_RATIO
     if use_rational_model:
         flags = cv2.CALIB_RATIONAL_MODEL |  cv2.CALIB_FIX_K5 |  cv2.CALIB_FIX_K6 # | cv2.CALIB_FIX_ASPECT_RATIO
 
@@ -188,12 +130,11 @@ if __name__ == "__main__":
     fs.write("dist_coeffs", distortion)
     fs.release()
 
-    write_orbslam3_mono_yaml_config(os.path.join(image_directory, "orbslam3_mono_camera_config.yaml"), camera_matrix, image_size, distortion[:,1:5])
-
+ 
     print("running undistortion...\n")
 
 
-    camera_matrix_new = cv2.getOptimalNewCameraMatrix(camera_matrix, distortion, image_size, 0.25, image_size, centerPrincipalPoint = True)
+    camera_matrix_new = cv2.getOptimalNewCameraMatrix(camera_matrix, distortion, image_size, 0.00, image_size, centerPrincipalPoint = True)
     print("New camera matrix:")
     print(camera_matrix_new)
 

@@ -24,14 +24,14 @@ def write_transformation_matrix_to_file(file_path, transformation_matrix):
 #path_directory_images_left = "/datadisk/data/agh_projects/miss/camera_calibration/20250831_stereo_calibration/selected_pairs_renamed/004LZ"
 #path_directory_images_right = "/datadisk/data/agh_projects/miss/camera_calibration/20250831_stereo_calibration/selected_pairs_renamed/004M1"
 
-path_directory_images_left = "/datadisk/data/agh_projects/miss/camera_calibration/20250916_stereo_calibration_2_7mm_lens/004LZ"
-path_directory_images_right = "/datadisk/data/agh_projects/miss/camera_calibration/20250916_stereo_calibration_2_7mm_lens/004M1"
+path_directory_images_left = "/datadisk/data/agh_projects/miss/camera_calibration/20251017_stereo_calibration_2_7mm_lens/004LZ/undistorted"
+path_directory_images_right = "/datadisk/data/agh_projects/miss/camera_calibration/20251017_stereo_calibration_2_7mm_lens/004M1/undistorted"
 
-path_file_camera_calibration_left = "/datadisk/data/agh_projects/miss/camera_calibration/20250916_calibration_2_7mm_lens/004LZ/calibration.yaml"
-path_file_camera_calibration_right = "/datadisk/data/agh_projects/miss/camera_calibration/20250916_calibration_2_7mm_lens/004M1/calibration.yaml"
+path_file_camera_calibration_left = "/datadisk/data/agh_projects/miss/camera_calibration/20251017_calibration_2_7mm_lens/004M1/calibration_undistorted.yaml"
+path_file_camera_calibration_right = "/datadisk/data/agh_projects/miss/camera_calibration/20251017_calibration_2_7mm_lens/004M1/calibration_undistorted.yaml"
 
-path_file_output_stereo_calibration_c2_c1 = "/datadisk/data/agh_projects/miss/camera_calibration/20250916_stereo_calibration_2_7mm_lens/stereo_calibration_c2_c1.txt"
-path_file_output_stereo_calibration_c1_c2 = "/datadisk/data/agh_projects/miss/camera_calibration/20250916_stereo_calibration_2_7mm_lens/stereo_calibration_c1_c2.txt"
+path_file_output_stereo_calibration_c2_c1 = "/datadisk/data/agh_projects/miss/camera_calibration/20251017_stereo_calibration_2_7mm_lens/stereo_calibration_c2_c1.txt"
+path_file_output_stereo_calibration_c1_c2 = "/datadisk/data/agh_projects/miss/camera_calibration/20251017_stereo_calibration_2_7mm_lens/stereo_calibration_c1_c2.txt"
 
 chessboard_field_size = 0.073
 
@@ -39,6 +39,9 @@ chessboard_field_size = 0.073
 fs = cv2.FileStorage(path_file_camera_calibration_left, cv2.FILE_STORAGE_READ)
 camera_matrix_left= fs.getNode("camera_matrix").mat()
 dist_coeffs_left = fs.getNode("dist_coeffs").mat()
+image_width = fs.getNode("image_width")
+image_height = fs.getNode("image_height")
+image_size = (int(image_width.real()), int(image_height.real()))
 fs.release()
 
 print(camera_matrix_left)
@@ -69,7 +72,6 @@ object_points_right_valid = []
 image_file_names_left_valid = []
 image_file_names_right_valid = []
 
-
 for i in range(number_of_pairs):
     if image_points_left[i].shape==() or image_points_right[i].shape==():
         print(f"Skipping pair {i}  - no corners detected in one of the images!")
@@ -90,7 +92,7 @@ _, _, _, _, _, R, T, E, F, rvects, tvects, per_view_errors = cv2.stereoCalibrate
                     distCoeffs1=dist_coeffs_left,
                     cameraMatrix2=camera_matrix_right,
                     distCoeffs2=dist_coeffs_right,
-                    imageSize=(1280, 960),
+                    imageSize=image_size,
                     R=None,
                     T=None,
                     flags=flags) 
@@ -103,6 +105,39 @@ print(T)
 print("\nPer view reprojection errors:")
 for i in range(len(per_view_errors)):
     print(f"View {i} (Left: {image_file_names_left_valid[i]}, Right: {image_file_names_right_valid[i]}): {per_view_errors.flatten()[i]:.4f} pixels")
+
+
+print("\nVerication using PnP:")
+for i in range(len(image_points_left_valid)):
+    print(f"Pair {i} (Left: {image_file_names_left_valid[i]}, Right: {image_file_names_right_valid[i]}):\n")
+    retval_left, rvec_left, tvec_left = cv2.solvePnP(object_points_left_valid[i], image_points_left_valid[i], camera_matrix_left, dist_coeffs_left)
+    retval_right, rvec_right, tvec_right = cv2.solvePnP(object_points_right_valid[i], image_points_right_valid[i], camera_matrix_right, dist_coeffs_right)
+
+    R_left, _ = cv2.Rodrigues(rvec_left)
+    R_right, _ = cv2.Rodrigues(rvec_right)
+
+    R_rel = R_right @ R_left.T
+    T_rel = tvec_right - R_rel @ tvec_left
+
+    transformation_matrix_pnp = create_transformation_matrix(R_rel, T_rel)
+
+    print(transformation_matrix_pnp)
+    print("\n")
+
+
+
+
+    #print(f"Pair {i} (Left: {image_file_names_left_valid[i]}, Right: {image_file_names_right_valid[i]}):")
+    #print("Estimated relative rotation:")
+    #print(R_rel)
+    #print("Estimated relative translation:")
+    #print(T_rel.flatten())
+    #print("Difference in rotation matrix:")
+    #print(R - R_rel)
+    #print("Difference in translation vector:")
+    #print(T.flatten() - T_rel.flatten())
+    #print("-----")
+
 
 transformation_matrix = create_transformation_matrix(R, T)
 write_transformation_matrix_to_file(path_file_output_stereo_calibration_c2_c1, transformation_matrix)
